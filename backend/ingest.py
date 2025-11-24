@@ -149,21 +149,23 @@ def tag_metadata(documents, namespace, base_url):
     
     return documents
 
-def chunk_documents(documents):
+def chunk_documents(documents, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP):
     """
     Split documents into chunks
     
     Args:
         documents: List of Document objects
+        chunk_size: Size of each chunk
+        chunk_overlap: Overlap between chunks
     
     Returns:
         List of chunked documents
     """
-    logger.info(f"Chunking {len(documents)} documents")
+    logger.info(f"Chunking {len(documents)} documents (size={chunk_size}, overlap={chunk_overlap})")
     
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         length_function=len,
         separators=["\n\n", "\n", ". ", " ", ""]
     )
@@ -228,7 +230,7 @@ def index_documents(documents, namespace):
         logger.error(f"Error initializing embeddings or vector store: {e}")
         raise
 
-def ingest_website(url, depth=2, max_urls=100000, status_callback=None):
+def ingest_website(url, depth=2, max_urls=100000, chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, status_callback=None):
     """
     Complete website ingestion pipeline
     
@@ -236,6 +238,8 @@ def ingest_website(url, depth=2, max_urls=100000, status_callback=None):
         url: Website URL to crawl
         depth: Crawl depth (not used in current BFS implementation)
         max_urls: Maximum number of URLs to process
+        chunk_size: Size of text chunks
+        chunk_overlap: Overlap between chunks
         status_callback: Optional callback function for progress updates
     
     Returns:
@@ -324,7 +328,7 @@ def ingest_website(url, depth=2, max_urls=100000, status_callback=None):
         
         # Phase 7: Chunking
         logger.info("Phase 6: Chunking")
-        chunks = chunk_documents(documents)
+        chunks = chunk_documents(documents, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         
         if status_callback:
             status_callback({

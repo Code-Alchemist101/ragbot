@@ -7,6 +7,7 @@ from flask_cors import CORS
 import uuid
 import threading
 import time
+import json
 from datetime import datetime
 from rag import get_answer, get_answer_stream
 from ingest import ingest_website
@@ -59,6 +60,10 @@ def chat():
         # Get chat history
         history = db.get_history(session_id)
         
+        # Update session activity
+        if bot_id:
+            db.update_session_activity(session_id, bot_id)
+        
         # Save user message
         db.save_message(session_id, 'user', question, bot_id)
         
@@ -102,6 +107,10 @@ def chat_stream():
         
         # Get chat history
         history = db.get_history(session_id)
+        
+        # Update session activity
+        if bot_id:
+            db.update_session_activity(session_id, bot_id)
         
         # Save user message
         db.save_message(session_id, 'user', question, bot_id)
@@ -172,6 +181,8 @@ def start_crawl():
         data = request.json
         url = data.get('url')
         depth = data.get('depth', 2)
+        chunk_size = int(data.get('chunk_size', 500))
+        chunk_overlap = int(data.get('chunk_overlap', 100))
         
         if not url:
             return jsonify({'error': 'URL is required'}), 400
@@ -200,7 +211,13 @@ def start_crawl():
                             crawl_status[crawl_id]['stage'] = update['stage']
             
             try:
-                result = ingest_website(url, depth=depth, status_callback=status_callback)
+                result = ingest_website(
+                    url, 
+                    depth=depth, 
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    status_callback=status_callback
+                )
                 
                 with crawl_status_lock:
                     if crawl_id in crawl_status:
@@ -251,7 +268,6 @@ def crawl_stream(crawl_id):
                 
                 # Send update if stage changed or status completed/failed
                 if current_stage != last_stage or status['status'] in ['completed', 'failed']:
-                    import json
                     update = {
                         'status': status['status'],
                         'stage': current_stage,
@@ -363,6 +379,22 @@ def get_bot(bot_id):
     
     except Exception as e:
         logger.error(f"Error getting bot: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/bots/<bot_id>', methods=['DELETE'])
+def delete_bot(bot_id):
+    """
+    Delete a bot
+    """
+    try:
+        success = db.delete_bot(bot_id)
+        if success:
+            return jsonify({'message': 'Bot deleted successfully'})
+        else:
+            return jsonify({'error': 'Bot not found'}), 404
+    
+    except Exception as e:
+        logger.error(f"Error deleting bot: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/bots/<bot_id>/sessions', methods=['GET'])

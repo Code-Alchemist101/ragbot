@@ -5,6 +5,28 @@ function BotDashboard({ onAddBot, onSelectBot }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
 
+    const handleDeleteBot = async (e, botId) => {
+        e.stopPropagation() // Prevent card click
+        if (!window.confirm('Are you sure you want to delete this bot? This action cannot be undone.')) {
+            return
+        }
+
+        try {
+            const response = await fetch(`/api/bots/${botId}`, {
+                method: 'DELETE'
+            })
+
+            if (response.ok) {
+                setBots(bots.filter(b => b.bot_id !== botId))
+            } else {
+                setError('Failed to delete bot')
+            }
+        } catch (err) {
+            console.error('Error deleting bot:', err)
+            setError('Failed to delete bot')
+        }
+    }
+
     const fetchBots = async () => {
         try {
             const response = await fetch('/api/bots')
@@ -64,6 +86,13 @@ function BotDashboard({ onAddBot, onSelectBot }) {
                         <p className="bot-date">
                             Created: {new Date(bot.created_at).toLocaleDateString()}
                         </p>
+                        <button
+                            className="delete-bot-btn"
+                            onClick={(e) => handleDeleteBot(e, bot.bot_id)}
+                            title="Delete Bot"
+                        >
+                            🗑️
+                        </button>
                     </div>
                 ))}
             </div>

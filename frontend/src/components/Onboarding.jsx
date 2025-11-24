@@ -3,6 +3,9 @@ import { useState } from 'react'
 function Onboarding({ onBotCreated, onBack }) {
     const [url, setUrl] = useState('')
     const [depth, setDepth] = useState(2)
+    const [chunkSize, setChunkSize] = useState(500)
+    const [chunkOverlap, setChunkOverlap] = useState(100)
+    const [showAdvanced, setShowAdvanced] = useState(false)
     const [crawling, setCrawling] = useState(false)
     const [progress, setProgress] = useState(null)
     const [error, setError] = useState(null)
@@ -31,7 +34,12 @@ function Onboarding({ onBotCreated, onBack }) {
             const response = await fetch('/api/crawl', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, depth })
+                body: JSON.stringify({
+                    url,
+                    depth,
+                    chunk_size: chunkSize,
+                    chunk_overlap: chunkOverlap
+                })
             })
 
             const data = await response.json()
@@ -158,6 +166,44 @@ function Onboarding({ onBotCreated, onBack }) {
                                 <option value={4}>4 - Very Deep</option>
                                 <option value={5}>5 - Maximum</option>
                             </select>
+                        </div>
+
+                        <div className="advanced-settings">
+                            <button
+                                className="advanced-toggle"
+                                onClick={() => setShowAdvanced(!showAdvanced)}
+                            >
+                                {showAdvanced ? '▼' : '▶'} Advanced Settings
+                            </button>
+
+                            {showAdvanced && (
+                                <div className="settings-grid">
+                                    <div className="form-group">
+                                        <label htmlFor="chunkSize">Chunk Size (chars)</label>
+                                        <input
+                                            id="chunkSize"
+                                            type="number"
+                                            min="100"
+                                            max="2000"
+                                            value={chunkSize}
+                                            onChange={(e) => setChunkSize(Number(e.target.value))}
+                                            className="depth-select"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label htmlFor="chunkOverlap">Overlap (chars)</label>
+                                        <input
+                                            id="chunkOverlap"
+                                            type="number"
+                                            min="0"
+                                            max="500"
+                                            value={chunkOverlap}
+                                            onChange={(e) => setChunkOverlap(Number(e.target.value))}
+                                            className="depth-select"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {error && <div className="error-message">{error}</div>}

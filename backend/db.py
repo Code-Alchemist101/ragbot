@@ -220,6 +220,29 @@ class DatabaseManager:
             logger.error(f"Error retrieving sessions: {e}")
             return []
     
+    def update_session_activity(self, session_id, bot_id=None):
+        """
+        Update session last activity or create if not exists
+        
+        Args:
+            session_id: Session identifier
+            bot_id: Bot identifier (optional, but recommended for creation)
+        """
+        try:
+            # Try to update existing session
+            result = self.db[COLLECTION_SESSIONS].update_one(
+                {'session_id': session_id},
+                {'$set': {'last_activity': datetime.utcnow().isoformat()}}
+            )
+            
+            # If not found (and bot_id provided), create new session
+            if result.matched_count == 0 and bot_id:
+                self.create_session(bot_id, session_id)
+                
+        except Exception as e:
+            logger.error(f"Error updating session activity: {e}")
+            # Don't raise, just log - session tracking shouldn't break chat
+
     def create_session(self, bot_id, session_id=None):
         """
         Create a new chat session
@@ -273,6 +296,37 @@ class DatabaseManager:
             logger.error(f"Error deleting old messages: {e}")
             return 0
     
+    def delete_bot(self, bot_id):
+        """
+        Delete a bot and all associated data
+        
+        Args:
+            bot_id: Bot identifier
+            
+        Returns:
+            Boolean indicating success
+        """
+        try:
+            # Delete chat history
+            self.db[COLLECTION_CHAT_HISTORY].delete_many({'bot_id': bot_id})
+            
+            # Delete sessions
+            self.db[COLLECTION_SESSIONS].delete_many({'bot_id': bot_id})
+            
+            # Delete bot
+            result = self.db[COLLECTION_BOTS].delete_one({'bot_id': bot_id})
+            
+            if result.deleted_count > 0:
+                logger.info(f"Deleted bot {bot_id} and associated data")
+                return True
+            else:
+                logger.warning(f"Bot {bot_id} not found for deletion")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error deleting bot: {e}")
+            raise
+
     def close(self):
         """Close database connection"""
         if self.client:
