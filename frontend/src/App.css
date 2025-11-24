@@ -826,3 +826,8 @@ body {
     transform: translateY(0);
   }
 }
+/* Dropdown option fix */
+.depth-select option {
+  background-color: #0f0f23;
+  color: #ffffff;
+}
